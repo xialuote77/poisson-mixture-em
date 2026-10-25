@@ -1,0 +1,581 @@
+---
+title: "Recovering Latent Reef Classes with Poisson Mixtures"
+author: "Kunze (Charlotte) Lyu"
+format:
+  html:
+    toc: true
+    embed-resources: true
+execute:
+  echo: true
+---
+
+Individual MAST30027 coursework, adapted for a portfolio. Assessment instructions are omitted.
+
+```{r}
+X <- scan("data/reef_counts_unlabelled.txt", quiet = TRUE)
+X0 <- scan("data/reef_counts_labelled.txt", quiet = TRUE)
+stopifnot(length(X) == 300, length(X0) == 100)
+```
+
+## Problem 1
+
+### Part (a): Expected complete log-likelihood
+
+For $k=1,2,3$, let $I(Z_i = k)$ denote the indicator that reef $i$ belongs to class $k$. Then the complete-data likelihood is
+$$
+P(X, Z\mid\theta) = \prod_{i=1}^{300}\prod_{k=1}^3
+\left[
+P(Z_i=k\mid\theta) P(X_i=x_i\mid Z_i=k,\theta)
+\right]^{I(Z_i=k)}.
+$$
+Since $P(Z_i=k\mid\theta)=\pi_k$ and $X_i\mid Z_i=k\sim \text{Poisson}(\lambda_k)$,
+$$
+P(X,Z\mid\theta)=\prod_{i=1}^{300}\prod_{k=1}^3
+\left[
+\pi_k\frac{\lambda_k^{x_i}e^{-\lambda_k}}{x_i!}
+\right]^{I(Z_i=k)}.
+$$
+Therefore, the complete-data log-likelihood is
+$$
+\log{P(X, Z\mid\theta)}=\sum_{i=1}^{300}\sum_{k=1}^{3}I(Z_i=k)
+\left[\log{\pi}_k+x_i\log{\lambda_k}-\lambda_k-\log{(x_i!)}\right].
+$$
+The expected complete log-likelihood is
+$$
+Q(\theta,\theta^0)=E_{Z\mid X,\theta^0} \left[\log{P}(X,Z\mid\theta) \right].
+$$
+Hence,
+$$
+Q(\theta, \theta^0)=\sum_{i=1}^{300}\sum_{k=1}^{3}E_{Z\mid X, \theta^0} [I(Z_i=k)]
+[\log\pi_k+x_i\log\lambda_k-\lambda_k-\log(x_i!)].
+$$
+Define the responsibility
+$$
+\tau_{ik}^{0}= P(Z_i=k\mid X_i=x_i, \theta^0).
+$$
+Since
+$$
+E_{Z\mid X,\theta^0}[I(Z_i=k)]=P(Z_i=k\mid X_i=x_i,\theta^0)=\tau_{ik}^0,
+$$
+we obtain
+$$
+\boxed{
+Q(\theta, \theta^0)=\sum_{i=1}^{300}\sum_{k=1}^{3}\tau_{ik}^{0}[\log\pi_k+x_i\log(\lambda_k)-\lambda_k-\log(x_i!)]
+}
+$$
+Here, $\tau_{ik}^{0}$ is the posterior probability, under the current parameter values $\theta^0$, that reef $i$ belongs to class $k$.
+
+### Part (b): E-step
+
+In the E-step, we calculate the responsibilities
+$$
+\tau_{ik}^{0}=P(Z_i=k\mid X_i=x_i,\theta^0).
+$$
+Using Bayes' rule,
+$$
+P(Z_i=k\mid X_i=x_i, \theta^0)= \frac{P(Z_i=k\mid\theta^0)P(X_i=x_i\mid Z_i=k, \theta^0)}{\sum_{j=1}^{3}P(Z_i=j\mid\theta^0)P(X_i=x_i\mid Z_i=j,\theta^0)}.
+$$
+Substituting the mixture proportions and Poisson probability mass functions gives
+$$
+\tau_{ik}^{0}=\frac{\pi_k^0\frac{(\lambda_k^{0})^{x_i}e^{-\lambda_k^0}}{x_i!}
+}{
+\sum_{j=1}^{3}\pi_j^0\frac{(\lambda_j^{0})^{x_i}e^{-\lambda_j^{0}}}{x_i!}}.
+$$
+Since the factor $x_i!$ is common to all terms, it cancels:
+$$
+\boxed{\tau_{ik}^0=\frac{\pi_k^0(\lambda_k^0)^{x_i}e^{-\lambda_k^0}
+}{\sum_{j=1}^3\pi_j^0(\lambda_j^0)^{x_i}e^{-\lambda_j^0}}}
+\qquad k=1,2,3
+$$
+For one reef $i$, $\tau_{ik}^0$ is the current posterior probability that the reef belongs to management class $k$, given its observed count $x_i$.
+
+### Part (c): M-step
+
+In the M-step, the responsibilities $\tau_{ik}^0$ are treated as fixed, and we maximise $Q(\theta,\theta^0)$ with respect to $\theta$.
+
+For the mixture proportions, we maximise
+$$
+\sum_{k=1}^3(\sum_{i=1}^{300}\tau_{ik}^0)\log\pi_k
+$$
+subject to
+$$
+\pi_1+\pi_2+\pi_3=1
+$$
+Using a Lagrange multiplier $\alpha$, define
+$$
+\mathcal{L}=\sum_{k=1}^3(\sum_{i=1}^{300}\tau_{ik}^0)\log\pi_k+\alpha\left(1-\sum_{k=1}^3\pi_k\right).
+$$
+Differentiating with respect to $\pi_k$,
+$$
+\frac{\partial\mathcal{L}}{\partial\pi_k}=\frac{\sum_{i=1}^{300}\tau_{ik}^0}{\pi_k}-\alpha=0.
+$$
+Hence,
+$$
+\pi_k=\frac{\sum_{i=1}^{300}\tau_{ik}^0}{\alpha}.
+$$
+Summing over $k=1,2,3$ and using $\sum_{k=1}^3\pi_k=1$,
+$$
+1=\frac{1}{\alpha}\sum_{i=1}^{300}\sum_{k=1}^3\tau_{ik}^0.
+$$
+Since $\sum_{k=1}^3\tau_{ik}^0=1$ for each reef $i$,
+$$
+\alpha=300.
+$$
+Therefore, the updated mixture proportions are
+$$
+\boxed{
+\pi_k^{\text{new}}=\frac{1}{300}\sum_{i=1}^{300}\tau_{ik}^0
+}\qquad k=1,2,3.
+$$
+For $\lambda_k$, retain the terms in $Q$ that depend on $\lambda_k$:
+$$
+\sum_{i=1}^{300}\tau_{ik}^0(x_i\log\lambda_k-\lambda_k).
+$$
+Differentiating with respect to $\lambda_k$,
+$$
+\frac{\partial Q}{\partial\lambda_k}=\sum_{i=1}^{300}\tau_{ik}^0
+\left(\frac{x_i}{\lambda_k}-1
+\right).
+$$
+Setting this equal to zero gives
+$$
+\frac{1}{\lambda_k}\sum_{i=1}^{300}\tau_{ik}^0x_i=\sum_{i=1}^{300}\tau_{ik}^0
+$$
+Hence,
+$$
+\boxed{
+\lambda_k^{\text{new}}=\frac{\sum_{i=1}^{300}\tau_{ik}^0x_i}{\sum_{i=1}^{300}\tau_{ik}^0}
+}\qquad k=1,2,3.
+$$
+Thus, each updated $\pi_k$ is the average responsibility assigned to class $k$, while each updated $\lambda_k$ is the responsibility-weighted mean of the observed counts for that class.
+
+### Part (d): Implementation
+
+The incomplete log-likelihood for the three-component Poisson mixture is
+$$
+\ell(\theta)=\sum_{i=1}^{300}\log\left[\sum_{k=1}^3\pi_kf(x_i;\lambda_k)
+\right].
+$$
+I implemented the EM algorithm using the E-step and M-step derived above. The algorithm stops when either the change in the incomplete log-likelihood is less than $10^{-5}$, or 100 EM iterations have been completed.
+
+```{r}
+compute.prob.x.z <- function(X, w.curr, lambda_curr) {
+  
+  prob.x.z <- matrix(
+    NA,
+    nrow = length(X),
+    ncol = length(w.curr)
+  )
+  
+  for (k in seq_len(ncol(prob.x.z))) {
+    prob.x.z[, k] <- dpois(X, lambda_curr[k]) * w.curr[k]
+  }
+  
+  return(list(prob.x.z = prob.x.z))
+}
+
+compute.log.lik <- function(X, w.curr, lambda_curr) {
+  
+  prob.x.z <- compute.prob.x.z(X, w.curr, lambda_curr)$prob.x.z
+  ill <- sum(log(rowSums(prob.x.z)))
+  
+  return(list(ill = ill))
+}
+
+EM.iter <- function(X, w.curr, lambda_curr) {
+  
+  # E-step
+  prob.x.z <- compute.prob.x.z(X, w.curr, lambda_curr)$prob.x.z
+  
+  P_ik <- prob.x.z / rowSums(prob.x.z)
+  
+  # M-step
+  w.new <- colSums(P_ik) / sum(P_ik)
+  
+  lambda_new <- colSums(P_ik * X) / colSums(P_ik)
+  
+  return(list(w.new = w.new, lambda_new = lambda_new))
+}
+```
+
+```{r}
+mixture.EM <- function(X, w.init, lambda_init, epsilon = 1e-5, max.iter = 100) {
+  w.curr <- w.init
+  lambda_curr <- lambda_init
+  
+  log_liks <- c()
+  log_liks <- c(
+    log_liks,
+    compute.log.lik(X, w.curr, lambda_curr)$ill
+  )
+  
+  delta.ll <- Inf
+  n.iter <- 1
+  
+  while ((delta.ll > epsilon) & (n.iter <= max.iter)) {
+    EM.out <- EM.iter(X, w.curr, lambda_curr)
+    
+    w.curr <- EM.out$w.new
+    lambda_curr <- EM.out$lambda_new
+    
+    log_liks <- c(
+      log_liks,
+      compute.log.lik(X, w.curr, lambda_curr)$ill
+    )
+    
+    delta.ll <- abs(log_liks[length(log_liks)] - log_liks[length(log_liks) - 1])
+    n.iter <- n.iter + 1
+  }
+  
+  return(list(w.curr = w.curr, lambda_curr = lambda_curr,
+              log_liks = log_liks, n.iter = n.iter -1))
+}
+```
+
+```{r}
+EM1 <- mixture.EM(X, w.init = c(0.3, 0.3, 0.4), lambda_init = c(3, 20, 35))
+
+EM2 <- mixture.EM(X, w.init = c(0.1, 0.2, 0.7), lambda_init = c(5, 25, 40))
+```
+
+```{r}
+#| fig-cap: "Incomplete log-likelihood trajectories for the two EM initialisaitions."
+ylim_range <- range(c(EM1$log_liks, EM2$log_liks))
+
+par(mfrow = c(1, 2))
+plot(
+  0:(length(EM1$log_liks) - 1),
+  EM1$log_liks,
+  type = "b",
+  ylim = ylim_range,
+  xlab = "Iteration",
+  ylab = "Incomplete log-likelihood",
+  main = "Initialisation 1"
+)
+
+plot(
+  0:(length(EM2$log_liks) - 1),
+  EM2$log_liks,
+  type = "b",
+  ylim = ylim_range,
+  xlab = "Iteration",
+  ylab = "Incomplete log-likelihood",
+  main = "Initialisation 2"
+)
+par(mfrow = c(1,1))
+```
+```{r}
+all(diff(EM1$log_liks) >= -1e-10)
+all(diff(EM2$log_liks) >= -1e-10)
+
+EM1$log_liks[length(EM1$log_liks)]
+EM2$log_liks[length(EM2$log_liks)]
+
+results <- rbind(
+  EM1 = c(
+    pi1 = EM1$w.curr[1],
+    pi2 = EM1$w.curr[2],
+    pi3 = EM1$w.curr[3],
+    lambda1 = EM1$lambda_curr[1],
+    lambda2 = EM1$lambda_curr[2],
+    lambda3 = EM1$lambda_curr[3],
+    logLik = EM1$log_liks[length(EM1$log_liks)],
+    iterations = EM1$n.iter
+  ),
+  EM2 = c(
+    pi1 = EM2$w.curr[1],
+    pi2 = EM2$w.curr[2],
+    pi3 = EM2$w.curr[3],
+    lambda1 = EM2$lambda_curr[1],
+    lambda2 = EM2$lambda_curr[2],
+    lambda3 = EM2$lambda_curr[3],
+    logLik = EM2$log_liks[length(EM2$log_liks)],
+    iterations = EM2$n.iter
+  )
+)
+
+round(results, 4)
+
+```
+For both initialisations, the incomplete log-likelihood increased monotonically at each EM iteration, as shown in the figure. Both runs converged after 12 iterations and attained essentially the same final incomplete log-likelihood, -1136.962.
+The resulting parameter estimates were
+$$
+\hat{\pi}_1=0.291, \qquad \hat{\pi}_2=0.285, \qquad \hat{\pi}_3=0.424
+$$
+and
+$$
+\hat{\lambda}_1=5.91, \qquad \hat{\lambda}_2=20.43, \qquad \hat{\lambda}_3=37.98.
+$$
+Since both initialisations converged to essentially the same solution and achieved the same incomplete log-likelihood, either run gives the selected MLE estimates.
+Thus, the fitted mixture suggests that approximately 29%, 29% and 42% of the reef-season observations belong to the three latent classes, with typical seasonal counts of about 6, 20 and 38 coral trout, respectively.
+
+## Problem 2
+
+### Part (a): Expected complete log-likelihood
+
+For the first 300 observations, the class labels remain unobserved, so their contribution is the same as in Problem 1. For the 100 labelled observations, $X_i \sim \text{Poisson}(\lambda_2)$ for $i=301, ..., 400$.
+
+Therefore, the complete-data likelihood is
+$$
+P(X,Z\mid \theta) = \left\{\prod_{i=1}^{300}\prod_{k=1}^3\left[
+\pi_k\frac{\lambda_k^{x_i}e^{-\lambda_k}}{x_i!}
+\right]^{I(Z_i=k)}
+\right\}
+\left\{
+\prod_{i=301}^{400}\frac{\lambda_2^{x_i}e^{-\lambda_2}}{x_i!}
+\right\}.
+$$
+Taking logarithms,
+$$
+\log P(X,Z\mid\theta)=\sum_{i=1}^{300}\sum_{k=1}^3I(Z_i=k)
+\left[
+\log(\pi_k)+x_i\log(\lambda_k)-\lambda_k-\log(x_i!)
+\right]
+$$
+$$
++\sum_{i=301}^{400}\left[
+x_i\log(\lambda_2)-\lambda_2-\log(x_i!)
+\right].
+$$
+Hence,
+$$
+Q(\theta, \theta^0)=E_{Z\mid X, \theta^0}
+\left[
+\log P(X, Z\mid \theta)
+\right].
+$$
+Since the second term contains no unobserved class indicators, it is unaffected by the expectation. Therefore,
+$$
+Q(\theta, \theta^0)=\sum_{i=1}^{300}\sum_{k=1}^3
+E_{Z\mid X,\theta^0}
+\left[I(Z_i=k)\right]
+\left[
+\log(\pi_k)+x_i\log(\lambda_k)-\lambda_k-\log(x_i!)
+\right]
+$$
+$$
++\sum_{i=301}^{400}\left[
+x_i\log(\lambda_2)-\lambda_2-\log(x_i!)
+\right].
+$$
+Using the same responsibilities as in Problem 1,
+$$
+\tau_{ik}^0=P(Z_i=k\mid X_i=x_i,\theta^0),
+$$
+we obtain
+$$
+\boxed{
+Q(\theta, \theta^0)=\sum_{i=1}^{300}\sum_{k=1}^3\tau_{ik}^0
+\left[
+\log(\pi_k)+ x_i\log(\lambda_k)-\lambda_k-\log(x_i!)
+\right]
++\sum_{i=301}^{400}
+\left[
+x_i\log(\lambda_2)-\lambda_2-\log(x_i!)
+\right]
+}
+$$
+The additional 100 labelled observations contribute directly to the terms involving $\lambda_2$, because their class membership is known and therefore no responsibility term is required.
+
+### Part (b): E-step and M-step
+
+For the first 300 unlabelled observations, the E-step is unchanged from Problem 1. The additional 100 observations have known class membership, so no responsibilities need to be calculated for them.
+
+Thus, for $i=1,..,300$,
+$$
+\tau_{ik}^0=P(Z_i=k\mid X_i=x_i,\theta^0)=\frac{\pi_k^0(\lambda_k^0)^{x_i}e^{-\lambda_k^0}}{\sum_{j=1}^3\pi_j^0(\lambda_j^0)^{x_i}e^{-\lambda_j^0}},
+\qquad
+k=1,2,3.
+$$
+For the M-step, the updates for the mixture proportions are unchanged because the additional 100 labelled observations are modelled directly as $\text{Poisson}(\lambda_2)$ and do not contribute any terms involving $\pi_k$. Therefore,
+$$
+\pi_k^{\text{new}}=\frac{1}{300}\sum_{i=1}^{300}\tau_{ik}^0, k=1,2,3.
+$$
+The update for $\lambda_1$ is also unchanged:
+$$
+\boxed{
+\lambda_1^{\text{new}}=\frac{\sum_{i=1}^{300}\tau_{i1}^0x_i}{\sum_{i=1}^{300}\tau_{i1}^0}.
+}
+$$
+Similarly, the update for $\lambda_3$ is unchanged:
+$$
+\boxed{
+\lambda_3^{\text{new}}=\frac{\sum_{i=1}^{300}\tau_{i3}^0x_i}{\sum_{i=1}^{300}\tau_{i3}^0}.
+}
+$$
+The update for $\lambda_2$ changes because both the unlabelled observations assigned probabilistically to class 2 and the 100 observations known to belong to class 2 contribute information about $\lambda_2$.
+The terms in $Q(\theta,\theta^0)$ involving $\lambda_2$ are
+$$
+\sum_{i=1}^{300}\tau_{i2}^0(x_i\log\lambda_2-\lambda_2)+\sum_{i=301}^{400}(x_i\log\lambda_2-\lambda_2).
+$$
+Differentiating with respect to $\lambda_2$,
+$$
+\frac{\partial Q}{\partial\lambda_2}=\sum_{i=1}^{300}\tau_{i2}^0
+\left(\frac{x_i}{\lambda_2}-1\right)+\sum_{i=301}^{400}
+\left(\frac{x_i}{\lambda_2}-1\right).
+$$
+Setting this equal to zero gives
+$$
+\frac{1}{\lambda_2}
+\left[\sum_{i=1}^{300}\tau_{i2}^0x_i+\sum_{i=301}^{400}x_i
+\right]=\sum_{i=1}^{300}\tau_{i2}^0+100.
+$$
+Hence,
+$$
+\boxed{
+\lambda_2^{\text{new}}= \frac{\sum_{i=1}^{300}\tau_{i2}^0x_i+\sum_{i=301}^{400}x_i}
+{\sum_{i=1}^{300}\tau_{i2}^0+100}.
+}
+$$
+Thus, $\lambda_2^{\text{new}}$ is a combined mean: the first 300 observations contribute according to their responsibilities for class 2, while each of the 100 labelled observations contributes with full weight because its class membership is known.
+
+### Part (c): Implementation
+
+The incomplete log-likelihood for the combined model is
+$$
+\ell(\theta)=\sum_{i=1}^{300}\log
+\left[\sum_{k=1}^3\pi_kf(x_i;\lambda_k)\right]+
+\sum_{i=301}^{400}\log f(x_i;\lambda_2).
+$$
+I modified the EM implementation from Problem 1 to incorporate the 100 labelled class-2 observations. The E-step for the first 300 observations is unchanged. In the M-step, the updates for the mixture proportions, $\lambda_1$ and $\lambda_3$ are unchanged, while the update for $\lambda_2$ includes the additional labelled observations. The algorithm stops when either the absolute change in the incomplete log-likelihood is less than $10^{-5}$, or 100 EM iterations have been completed.
+```{r}
+compute.log.lik.2 <- function(X, X0, w.curr, lambda_curr) {
+  prob.x.z <- compute.prob.x.z(X, w.curr, lambda_curr)$prob.x.z
+  
+  ill.unlabelled <- sum(log(rowSums(prob.x.z)))
+  ill.labelled <- sum(dpois(X0, lambda_curr[2], log = TRUE))
+  
+  ill <- ill.unlabelled + ill.labelled
+  
+  return(list(ill = ill))
+}
+
+EM.iter.2 <- function(X, X0, w.curr, lambda_curr) {
+  prob.x.z <- compute.prob.x.z(X, w.curr, lambda_curr)$prob.x.z
+  
+  P_ik <- prob.x.z / rowSums(prob.x.z)
+  
+  w.new <- colSums(P_ik) / sum(P_ik)
+  
+  lambda_new <- numeric(3)
+  
+  lambda_new[1] <- sum(P_ik[, 1] * X) / sum(P_ik[, 1])
+  
+  lambda_new[2] <- (sum(P_ik[, 2] * X) + sum(X0)) /
+    (sum(P_ik[, 2]) + length(X0))
+  
+  lambda_new[3] <- sum(P_ik[, 3] * X) / sum(P_ik[, 3])
+  
+  return(list(w.new = w.new, lambda_new = lambda_new))
+}
+```
+```{r}
+mixture.EM.2 <- function(X, X0, w.init, lambda_init, epsilon = 1e-5, max.iter = 100) {
+  w.curr <- w.init
+  lambda_curr <- lambda_init
+  
+  log_liks <- c()
+  
+  log_liks <- c(log_liks, compute.log.lik.2(X, X0, w.curr, lambda_curr)$ill)
+  
+  delta.ll <- Inf
+  n.iter <- 0
+  
+  while ((delta.ll > epsilon) & (n.iter < max.iter)) {
+    EM.out <- EM.iter.2(X, X0, w.curr, lambda_curr)
+    
+    w.curr <- EM.out$w.new
+    lambda_curr <- EM.out$lambda_new
+    
+    log_liks <- c(log_liks, compute.log.lik.2(X, X0, w.curr, lambda_curr)$ill)
+    
+    delta.ll <- abs(log_liks[length(log_liks)] -
+                      log_liks[length(log_liks) - 1])
+    
+    n.iter <- n.iter + 1
+  }
+    
+  return(list(w.curr = w.curr, lambda_curr = lambda_curr,
+                log_liks = log_liks, n.iter = n.iter))
+}
+```
+```{r}
+EM1.2 <- mixture.EM.2(X, X0, w.init = c(0.3, 0.3, 0.4),
+                      lambda_init = c(3, 20, 35))
+
+EM2.2 <- mixture.EM.2(X, X0, w.init = c(0.1, 0.2, 0.7),
+                      lambda_init = c(5, 25, 40))
+```
+
+```{r}
+#| fig-cap: "Incomplete log-likelihood trajectories for the two EM initialisations under the combined model."
+
+ylim_range <- range(c(EM1.2$log_liks, EM2.2$log_liks))
+
+par(mfrow = c(1,2))
+
+plot(
+  0:(length(EM1.2$log_liks) - 1),
+  EM1.2$log_liks,
+  type = "b",
+  ylim = ylim_range,
+  xlab = "Iteration",
+  ylab = "Incomplete log-likelihood",
+  main = "Initialisation 1"
+)
+
+plot(
+  0:(length(EM2.2$log_liks) - 1),
+  EM2.2$log_liks,
+  type = "b",
+  ylim = ylim_range,
+  xlab = "Iteration",
+  ylab = "Incomplete log-likelihood",
+  main = "Initialisation 2"
+)
+par(mfrow = c(1,1))
+```
+```{r}
+all(diff(EM1.2$log_liks) >= -1e-10)
+all(diff(EM2.2$log_liks) >= -1e-10)
+
+EM1.2$log_liks[length(EM1.2$log_liks)]
+EM2.2$log_liks[length(EM2.2$log_liks)]
+
+results.2 <- rbind(
+  EM1 = c(
+    pi1 = EM1.2$w.curr[1],
+    pi2 = EM1.2$w.curr[2],
+    pi3 = EM1.2$w.curr[3],
+    lambda1 = EM1.2$lambda_curr[1],
+    lambda2 = EM1.2$lambda_curr[2],
+    lambda3 = EM1.2$lambda_curr[3],
+    logLik = EM1.2$log_liks[length(EM1.2$log_liks)],
+    iterations = EM1.2$n.iter
+  ),
+  EM2 = c(
+    pi1 = EM2.2$w.curr[1],
+    pi2 = EM2.2$w.curr[2],
+    pi3 = EM2.2$w.curr[3],
+    lambda1 = EM2.2$lambda_curr[1],
+    lambda2 = EM2.2$lambda_curr[2],
+    lambda3 = EM2.2$lambda_curr[3],
+    logLik = EM2.2$log_liks[length(EM2.2$log_liks)],
+    iterations = EM2.2$n.iter
+  )
+)
+
+round(results.2, 4)
+```
+
+For both initialisations, the incomplete log-likelihood increased monotonically at each EM iteration, as shown in the figure. The first run converged after 8 iterations, while the second run converged after 9 iterations. Both runs attained essentially the same final incomplete log-likelihood of -1429.048.
+
+The resulting parameter estimates were
+$$
+\hat{\pi}_1=0.289,\qquad \hat{\pi}_2=0.281,\qquad \hat{\pi}_3=0.430,
+$$
+and
+$$
+\hat{\lambda}_1=5.87,\qquad \hat{\lambda}_2=19.86,\qquad \hat{\lambda}_3=37.85.
+$$
+Since both initialisations converged to essentially the same solution and achieved the same incomplete log-likelihood, either run gives the selected MLE estimates. The fitted model therefore suggests that approximately 29%, 28% and 43% of the unlabelled reef-season observations belong to the three latent classes, with typical seasonal counts of about 6, 20, and 38 coral trout, respectively.
