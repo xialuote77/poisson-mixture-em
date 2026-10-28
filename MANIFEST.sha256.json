@@ -1,11 +1,11 @@
 {
   ".gitignore": "0240d0040b8510ea655934e9497f31148bb1b9deb259b31e32f38d03de5e2b92",
   "analysis.qmd": "8aab8a4b1adb98049a1180e50c043d5f1c7c7aa8a85cc97920b2d40c6bd8898c",
-  "em-diagnostics.pdf": "566fcbc013bea428d1b4241982198762b4ce542b54c29bb223033fb76f026f08",
-  "README.md": "0f620e502a9c87a6094fb1276c788ce0aace9d6b632b25cf5b07c9ad672e40a2",
-  "run_analysis.R": "264315fbf78908cc43cec6a629ebb3a603c742c64094ce580aa38e0695e8bb83",
   "data/reef_counts_labelled.txt": "65e83f829dced66ef065fe645bbfd9e539bddf4b2c0f4c53091874a5c5b5e474",
   "data/reef_counts_unlabelled.txt": "3a73c4c492d164445e160250bc5e6642e7a89ef84bc4a65930e2680a0cec5a4b",
   "docs/CONTRIBUTIONS.md": "6a121cd8ac1e7bb28282cc8a2bd5cf6432fca421dd73a79b6ffcf5ef48902371",
-  "docs/VALIDATION.md": "04be37ad1bea2c94c3817e0ae75de1f5e786a4f083d9e8580e93bd71429ec7ff"
+  "docs/VALIDATION.md": "04be37ad1bea2c94c3817e0ae75de1f5e786a4f083d9e8580e93bd71429ec7ff",
+  "em-diagnostics.pdf": "566fcbc013bea428d1b4241982198762b4ce542b54c29bb223033fb76f026f08",
+  "README.md": "5d3e5be7f1e0524621eb505579f70716edd8a7ffe0b08400b1a6a2e66d82b4b2",
+  "run_analysis.R": "264315fbf78908cc43cec6a629ebb3a603c742c64094ce580aa38e0695e8bb83"
 }
